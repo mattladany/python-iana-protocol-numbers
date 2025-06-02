@@ -15,3 +15,11 @@ def test_number_to_keyword():
 def test_keyword_to_number():
     protocol_numbers = IANAProtocolNumbers(load_local=True)
     assert protocol_numbers.keyword_to_number("HOPOPT") == 0
+
+def test_number_to_keyword_not_found():
+    protocol_numbers = IANAProtocolNumbers(load_local=True)
+    assert protocol_numbers.number_to_keyword(444) == None
+
+def test_keyword_to_number_not_found():
+    protocol_numbers = IANAProtocolNumbers(load_local=True)
+    assert protocol_numbers.keyword_to_number("NOT_FOUND") == -1

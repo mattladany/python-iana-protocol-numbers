@@ -16,7 +16,7 @@ class IANAProtocolNumbers:
         if load_local:
             self.load_local()
         else:
-            self.load_latest()
+            self.fetch_latest()
 
     def number_to_keyword(self, num: int) -> str:
         for proto in self.protocol_numbers:
@@ -32,33 +32,44 @@ class IANAProtocolNumbers:
 
     def load_local(self):
         with open("data/protocol-numbers-1.csv", "r") as f:
-            reader = csv.reader(f)
-            next(reader)
-            self.protocol_numbers = [row for row in reader if len(row) >= 5]
+            csv_content = f.read()
+            self.protocol_numbers = self.parse_csv(StringIO(csv_content))
 
-    def load_latest(self, url: str = "https://www.iana.org/assignments/protocol-numbers/protocol-numbers-1.csv", timeout: int = 5000):
+    def fetch_latest(self, url: str = "https://www.iana.org/assignments/protocol-numbers/protocol-numbers-1.csv", timeout: int = 5000):
         try:
             response = requests.get(url, timeout=timeout/1000)
             response.raise_for_status()
             
-            csv_content = StringIO(response.text)
-            reader = csv.reader(csv_content)
-            
-            next(reader)
-            
-            self.protocol_numbers = []
-            for row in reader:
-                if len(row) >= 5:
-                    try:
-                        self.protocol_numbers.append([
-                            int(row[self.NUMBER_COLUMN]),
+            self.protocol_numbers = self.parse_csv(StringIO(response.text))
+
+        except requests.RequestException as e:
+            raise Exception(f"Failed to fetch protocol numbers: {str(e)}")
+
+    def parse_csv(self, csv_content: str):
+        reader = csv.reader(csv_content)
+        
+        next(reader)
+        
+        csv_as_array = []
+        for row in reader:
+            if len(row) >= 5:
+                try:
+                    int(row[self.NUMBER_COLUMN])
+                    csv_as_array.append([
+                        int(row[self.NUMBER_COLUMN]),
+                        row[self.KEYWORD_COLUMN],
+                        row[self.PROTOCOL_COLUMN],
+                        row[self.IPv6_EXTENSION_HEADER_COLUMN],
+                        row[self.REFERENCE_COLUMN]
+                    ])
+                except ValueError:
+                    range_values = row[self.NUMBER_COLUMN].split("-")
+                    for i in range(int(range_values[0]), int(range_values[1]) + 1):
+                        csv_as_array.append([
+                            i,
                             row[self.KEYWORD_COLUMN],
                             row[self.PROTOCOL_COLUMN],
                             row[self.IPv6_EXTENSION_HEADER_COLUMN],
                             row[self.REFERENCE_COLUMN]
                         ])
-                    except ValueError:
-                        continue
-                        
-        except requests.RequestException as e:
-            raise Exception(f"Failed to fetch protocol numbers: {str(e)}")
+        return csv_as_array
